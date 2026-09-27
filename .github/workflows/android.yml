@@ -23,8 +23,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bildschirmfotos
-          path: app/build/bildschirmfotos/
+          name: testberichte-und-bildschirmfotos
+          path: |
+            app/build/bildschirmfotos/
+            app/build/reports/tests/
           if-no-files-found: ignore
       - name: APK bauen
         run: ./gradlew --no-daemon assembleDebug

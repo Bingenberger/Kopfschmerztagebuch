@@ -25,7 +25,6 @@ import de.kopfschmerztagebuch.spiel.TUERME
 import de.kopfschmerztagebuch.spiel.spruengeProTag
 import de.kopfschmerztagebuch.spiel.tagesaufgabe
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -83,15 +82,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val spiel = SprungSpiel()
     /** Punkte der aktuellen Spielrunde (seit App-Start). */
     var punkteHeute by mutableIntStateOf(0)
-
-    init {
-        viewModelScope.launch {
-            while (true) {
-                delay(20_000)
-                datumPruefen()
-            }
-        }
-    }
 
     fun datumPruefen() {
         val jetzt = LocalDate.now()

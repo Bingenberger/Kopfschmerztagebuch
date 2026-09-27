@@ -1,12 +1,10 @@
 package de.kopfschmerztagebuch.ui
 
 import android.graphics.Bitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.captureToImage
+import android.graphics.Canvas
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
@@ -35,7 +33,10 @@ class SpielAblaufTest {
     val rule = createAndroidComposeRule<MainActivity>()
 
     private fun foto(name: String) {
-        val bild = rule.onRoot().captureToImage().asAndroidBitmap()
+        rule.waitForIdle()
+        val fenster = rule.activity.window.decorView
+        val bild = Bitmap.createBitmap(fenster.width, fenster.height, Bitmap.Config.ARGB_8888)
+        fenster.draw(Canvas(bild))
         val dir = File("build/bildschirmfotos").apply { mkdirs() }
         File(dir, "$name.png").outputStream().use { bild.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }

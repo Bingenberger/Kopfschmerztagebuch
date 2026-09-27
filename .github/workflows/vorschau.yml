@@ -12,10 +12,26 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew --no-daemon testDebugUnitTest --tests '*SpielAblaufTest*'
-      - if: always()
-        run: |
-          cd app/build/bildschirmfotos
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vorschau
+          path: app/build/bildschirmfotos/
+  zeigen:
+    needs: fotos
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vorschau
+          path: fotos
+      - run: |
+          cd fotos; ls -la
           for f in *.png; do
-            convert "$f" -resize 300x -quality 60 "${f%.png}.jpg"
-            echo "=====BILD ${f%.png}"; base64 -w0 "${f%.png}.jpg"; echo; echo "=====ENDE"
+            python3 -c "
+          import sys,base64,io
+          from PIL import Image
+          im=Image.open('$f').convert('RGB'); im.thumbnail((320,720)); b=io.BytesIO(); im.save(b,'JPEG',quality=55)
+          print('=====BILD $f'); print(base64.b64encode(b.getvalue()).decode()); print('=====ENDE')" || echo "Fehler bei $f"
           done

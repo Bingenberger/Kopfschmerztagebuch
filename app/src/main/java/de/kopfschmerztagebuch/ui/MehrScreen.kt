@@ -14,7 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -30,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -101,6 +107,50 @@ fun MehrScreen(vm: AppViewModel, meldung: (String) -> Unit) {
             Text(
                 "Die Erinnerung kommt auch, wenn die App geschlossen ist.",
                 fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+
+        Karte(titel = "Meine Medikamente") {
+            Text(
+                "Diese Medikamente stehen beim Eintragen zum Antippen bereit. Am besten mit Menge eintragen, " +
+                    "so wie es mit der Ärztin oder dem Arzt abgesprochen ist – z. B. „Ibuprofen 200 mg“.",
+                fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            daten.meineMedikamente.forEach { m ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("💊 $m", modifier = Modifier.weight(1f))
+                    TextButton(onClick = { vm.medikamentEntfernen(m) }) { Text("entfernen") }
+                }
+            }
+            var neu by remember { mutableStateOf("") }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                OutlinedTextField(
+                    value = neu, onValueChange = { neu = it }, singleLine = true, modifier = Modifier.weight(1f),
+                    placeholder = { Text("Medikament und Menge") }, shape = RoundedCornerShape(10.dp),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { vm.medikamentHinzufuegen(neu); neu = "" }),
+                )
+                TextButton(onClick = { vm.medikamentHinzufuegen(neu); neu = "" }, enabled = neu.isNotBlank()) { Text("hinzufügen") }
+            }
+        }
+
+        Karte(titel = "Für Eltern: Wann schnell zum Arzt?") {
+            Text(
+                "Die meisten Kopfschmerzen bei Kindern sind harmlos. Sofort ärztlich abklären lassen (außerhalb der Sprechzeiten " +
+                    "ärztlicher Bereitschaftsdienst 116 117, im Notfall 112), wenn die Kopfschmerzen …",
+                fontSize = 14.sp,
+            )
+            listOf(
+                "plötzlich und so stark wie noch nie auftreten",
+                "mit Fieber und steifem Nacken oder Hautausschlag einhergehen",
+                "nach einem Sturz oder Schlag auf den Kopf beginnen",
+                "mit Lähmung, Taubheit, Sprach- oder Sehstörungen (z. B. Doppelbildern), Verwirrtheit oder einem Krampfanfall auftreten",
+                "nachts aus dem Schlaf wecken oder morgens mit Erbrechen kommen",
+                "über Tage bis Wochen immer stärker werden oder sich ganz anders anfühlen als sonst",
+            ).forEach { Text("•  $it", fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)) }
+            Text(
+                "Dieses Tagebuch ersetzt keine ärztliche Untersuchung. Den PDF-Bericht unter „Verlauf“ am besten zum nächsten Termin mitnehmen.",
+                fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp),
             )
         }
 

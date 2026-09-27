@@ -18,8 +18,8 @@ object PdfBericht {
     private val DATUM_LANG = DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)
 
     private val SPALTEN = listOf(
-        "Datum" to 70f, "Stärke" to 42f, "Beginn / Dauer" to 88f, "Art / Ort" to 118f, "Auslöser" to 110f,
-        "Medikament" to 90f, "Bildschirm" to 70f, "Getrunken" to 64f, "Notiz" to 118f,
+        "Datum" to 56f, "Stärke" to 32f, "Beginn / Dauer" to 76f, "Art / Ort" to 92f, "Begleitsymptome" to 96f,
+        "Auslöser" to 84f, "Medikament" to 96f, "Alltag" to 66f, "Schlaf / Bildschirm / Trinken" to 86f, "Notiz" to 86f,
     )
 
     fun schreiben(eintraege: Map<String, Eintrag>, heute: LocalDate, out: OutputStream) {
@@ -72,9 +72,14 @@ object PdfBericht {
             a.durchschnitt?.let { teile += "Ø Stärke ${"%.1f".format(Locale.GERMAN, it)}" }
             a.staerkster?.let { teile += "stärkster Wert $it" }
             if (a.mitSchmerzen > 0) teile += "Medikament an ${a.mitMedikament} Tagen"
+            if (a.eingeschraenkt > 0) teile += "Alltag eingeschränkt an ${a.eingeschraenkt} Tagen"
+            if (a.haeufigsteBegleit.isNotEmpty()) teile += "häufigste Begleitsymptome: " + a.haeufigsteBegleit.joinToString { "${it.first} (${it.second}×)" }
             if (a.haeufigsteAusloeser.isNotEmpty()) teile += "häufigste Auslöser: " + a.haeufigsteAusloeser.joinToString { "${it.first} (${it.second}×)" }
-            c0.drawText(teile.joinToString(" · "), RAND, y, text)
-            y += 14f
+            umbrechen(teile.joinToString(" · "), B - 2 * RAND, text).forEach { zeile ->
+                c0.drawText(zeile, RAND, y, text)
+                y += 12f
+            }
+            y += 4f
         }
         y += 14f
         tabellenKopf()
@@ -86,10 +91,15 @@ object PdfBericht {
                 if (e.frei) "frei" else e.staerke.toString(),
                 if (e.frei) "" else listOf(e.beginn.takeIf { it.isNotEmpty() }?.let { "ab $it Uhr" }, e.dauer).filterNotNull().filter { it.isNotEmpty() }.joinToString(", "),
                 if (e.frei) "" else (e.art + e.ort).joinToString(", "),
+                e.begleit.joinToString(", "),
                 e.ausloeser.joinToString(", "),
-                e.medikament,
-                e.bildschirm,
-                e.trinken,
+                listOfNotNull(
+                    e.medikamentText.ifEmpty { null },
+                    e.medikamentZeit.ifEmpty { null }?.let { "um $it" },
+                    e.wirkung.ifEmpty { null }?.let { "($it)" },
+                ).joinToString(" "),
+                e.alltag.takeIf { it != "gar nicht" }.orEmpty(),
+                listOf(e.schlaf.ifEmpty { null }?.let { "Schlaf $it" }, e.bildschirm, e.trinken).filterNotNull().filter { it.isNotEmpty() }.joinToString(" · "),
                 e.notiz,
             )
             val umbrochen = zellen.mapIndexed { i, z -> umbrechen(z, SPALTEN[i].second - 6f, text) }

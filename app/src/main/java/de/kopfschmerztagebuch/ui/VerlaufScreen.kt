@@ -50,6 +50,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.kopfschmerztagebuch.data.Auswertung
 import de.kopfschmerztagebuch.data.Eintrag
+import de.kopfschmerztagebuch.data.SCHMERZMITTEL_GRENZE
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -61,7 +62,10 @@ fun details(e: Eintrag): String = if (e.frei) {
     listOfNotNull("schmerzfrei", e.bildschirm.ifEmpty { null }?.let { "Bildschirm: $it" }, e.trinken.ifEmpty { null }?.let { "getrunken: $it" })
         .joinToString(" · ")
 } else {
-    listOf(e.beginn.ifEmpty { null }?.let { "ab $it Uhr" }, e.dauer, e.art.joinToString("/"), e.ort.joinToString(", "), e.medikament)
+    listOf(
+        e.beginn.ifEmpty { null }?.let { "ab $it Uhr" }, e.dauer, e.art.joinToString("/"), e.ort.joinToString(", "),
+        e.begleit.joinToString(", "), e.medikamentText.ifEmpty { null }?.let { "💊 $it" },
+    )
         .filter { !it.isNullOrEmpty() }.joinToString(" · ")
 } + if (e.nachgetragen) " · nachgetragen" else ""
 
@@ -82,9 +86,30 @@ fun VerlaufScreen(vm: AppViewModel, meldung: (String) -> Unit) {
                 Kennzahl("${a.mitSchmerzen}", "mit Kopf-\nschmerzen", Modifier.weight(1f))
                 Kennzahl("${a.schmerzfrei}", "schmerzfrei", Modifier.weight(1f))
                 Kennzahl(a.durchschnitt?.let { "%.1f".format(Locale.GERMAN, it) } ?: "–", "Ø Stärke", Modifier.weight(1f))
+                Kennzahl("${a.mitMedikament}", "Schmerz-\nmittel-Tage", Modifier.weight(1f))
+            }
+            if (a.mitMedikament >= SCHMERZMITTEL_GRENZE) {
+                Spacer(Modifier.height(10.dp))
+                Banner(
+                    "An ${a.mitMedikament} der letzten 30 Tage gab es Schmerzmittel. Das bitte mit der Kinderärztin oder dem Kinderarzt " +
+                        "besprechen: Werden Schmerzmittel an mehr als etwa 10 Tagen im Monat genommen, können sie selbst Kopfschmerzen auslösen.",
+                )
             }
             Spacer(Modifier.height(14.dp))
             StaerkeDiagramm(daten.eintraege, heute)
+            if (a.haeufigsteBegleit.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Häufigste Begleitsymptome: " + a.haeufigsteBegleit.joinToString { "${it.first} (${it.second}×)" },
+                    fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (a.eingeschraenkt > 0) {
+                Text(
+                    "Alltag eingeschränkt an ${a.eingeschraenkt} Tagen",
+                    fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (a.haeufigsteAusloeser.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
                 Text(
@@ -131,12 +156,20 @@ fun VerlaufScreen(vm: AppViewModel, meldung: (String) -> Unit) {
                         Zeile("Dauer", e.dauer.ifEmpty { "–" })
                         Zeile("Art", e.art.joinToString(", ").ifEmpty { "–" })
                         Zeile("Ort", e.ort.joinToString(", ").ifEmpty { "–" })
+                        Zeile("Begleitsymptome", e.begleit.joinToString(", ").ifEmpty { "–" })
                         Zeile("Auslöser", e.ausloeser.joinToString(", ").ifEmpty { "–" })
-                        Zeile("Medikament", e.medikament.ifEmpty { "–" })
+                        Zeile(
+                            "Medikament",
+                            e.medikamentText.ifEmpty { "–" } +
+                                (e.medikamentZeit.takeIf { it.isNotEmpty() }?.let { ", um $it Uhr" } ?: "") +
+                                (e.wirkung.takeIf { it.isNotEmpty() }?.let { " – $it" } ?: ""),
+                        )
+                        Zeile("Alltag", e.alltag.ifEmpty { "–" })
                     }
                     if (!loeschenFragen) {
                         Zeile("Bildschirmzeit", e.bildschirm.ifEmpty { "–" })
                         Zeile("Getrunken", e.trinken.ifEmpty { "–" })
+                        if (e.schlaf.isNotEmpty()) Zeile("Schlaf", e.schlaf)
                         if (e.notiz.isNotEmpty()) Zeile("Notiz", e.notiz)
                         Zeile("Eingetragen", (e.zeit.ifEmpty { "–" }) + if (e.nachgetragen) " (nachgetragen)" else "")
                     }

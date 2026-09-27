@@ -4,13 +4,15 @@ Native Android-App (Kotlin, Jetpack Compose) aus der bisherigen Browser-Version.
 
 ## Funktionen
 
-**Heute** – Tageseintrag wie gewohnt: Stärke 1–10, Ort, Beginn, Art, Dauer, Auslöser, Medikament, Notiz sowie für jeden Tag Bildschirmzeit und Trinkmenge (Pflicht). „Heute keine Kopfschmerzen 🎉“ für schmerzfreie Tage. Gestern und Vorgestern lassen sich nachtragen, der heutige Eintrag lässt sich ändern (die Felder sind dann schon ausgefüllt).
+**Heute** – Zuerst die Frage „Hattest Du heute Kopfschmerzen?“ (Ja/Nein). Bei „Nein“ bleiben nur die Tagesfragen, bei „Ja“ kommen dazu: Stärke 1–10 mit Gesichtern, Ort, Art, Beginn und Dauer, Begleitsymptome (Übelkeit, Licht-/Lärmempfindlichkeit, Sehstörungen …), Auslöser, Medikament (Vorauswahl zum Antippen, Uhrzeit der Einnahme, Wirkung) und wie sehr die Kopfschmerzen im Alltag gebremst haben. Für jeden Tag: Bildschirmzeit und Trinkmenge (Pflicht) sowie Schlaf. Die Wirkung des Medikaments lässt sich später direkt auf der Bestätigungskarte nachtragen. Gestern und Vorgestern lassen sich nachtragen, der heutige Eintrag lässt sich ändern.
 
-**Verlauf** – Kennzahlen der letzten 30 Tage (Tage mit Kopfschmerzen, schmerzfreie Tage, Ø Stärke, häufigste Auslöser), Säulendiagramm der Stärke, Liste aller Einträge. Antippen zeigt Details, dort kann man den Eintrag bearbeiten oder löschen.
+**Verlauf** – Kennzahlen der letzten 30 Tage (Tage mit Kopfschmerzen, schmerzfreie Tage, Ø Stärke, Schmerzmittel-Tage, häufigste Begleitsymptome und Auslöser; ab 10 Schmerzmittel-Tagen ein Hinweis, das ärztlich zu besprechen), Säulendiagramm der Stärke, Liste aller Einträge. Antippen zeigt Details, dort kann man den Eintrag bearbeiten oder löschen.
 
 **Export für den Arzt** – PDF-Bericht (Zusammenfassung 30/90 Tage + Tabelle aller Einträge) oder CSV-Tabelle (gleiches Format wie die Web-Version, öffnet sich in Excel). Jeweils *Teilen …* (Mail, Messenger, Drive …) oder *Speichern* in einen Ordner nach Wahl.
 
 **Mehr**
+- „Meine Medikamente“: die Vorauswahl beim Eintragen, am besten mit Menge (z. B. „Ibuprofen 200 mg“).
+- Für Eltern: Warnzeichen, bei denen Kopfschmerzen zügig ärztlich abgeklärt werden sollten.
 - Tägliche Erinnerung als echte Android-Benachrichtigung – kommt auch bei geschlossener App und nach einem Neustart, aber nur, wenn der Eintrag noch fehlt.
 - Datensicherung als JSON-Datei speichern und wiederherstellen (inkl. Spielstand).
 - CSV aus der Web-Version einlesen: dort unter „Verlauf“ exportieren, hier einlesen. Vorhandene Tage bleiben unverändert.

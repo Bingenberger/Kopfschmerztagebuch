@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -127,6 +128,15 @@ fun HeuteScreen(vm: AppViewModel, meldung: (String) -> Unit) {
                             color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
                         )
                     }
+                    if (eintragHeute.mitMedikament && (eintragHeute.wirkung.isEmpty() || eintragHeute.wirkung == Auswahl.WIRKUNG.last())) {
+                        Spacer(Modifier.height(14.dp))
+                        Text(
+                            "💊 Hat ${eintragHeute.medikamentText} geholfen?" + (eintragHeute.medikamentZeit.takeIf { it.isNotEmpty() }?.let { " (genommen um $it Uhr)" } ?: ""),
+                            fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Chips(Auswahl.WIRKUNG.dropLast(1), { it == eintragHeute.wirkung }) { w -> vm.wirkungSetzen(heuteIso, w) }
+                    }
                     Spacer(Modifier.height(16.dp))
                     HauptKnopf("Zum Sprungturm 🏊") { vm.tabWechseln(Tab.SPIEL) }
                     LeiserKnopf("Eintrag ändern") { vm.bearbeitenHeute() }
@@ -142,95 +152,184 @@ fun HeuteScreen(vm: AppViewModel, meldung: (String) -> Unit) {
             ) { vm.formularAbbrechen(); pflichtFehler = false }
         }
 
-        Karte(titel = "Wie stark sind die Kopfschmerzen?") {
-            Text(
-                f.staerke.toString(), fontSize = 48.sp, fontWeight = FontWeight.ExtraBold, color = Farben.staerke(f.staerke),
-                modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center,
-            )
-            Text(
-                Auswahl.STAERKE_TEXT[f.staerke], color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center,
-            )
-            Slider(
-                value = f.staerke.toFloat(), onValueChange = { v -> vm.formularAendern { it.copy(staerke = v.toInt()) } },
-                valueRange = 1f..10f, steps = 8,
-                colors = SliderDefaults.colors(thumbColor = Farben.staerke(f.staerke), activeTrackColor = Farben.staerke(f.staerke)),
-            )
-        }
-        Karte(titel = "Wo tut es weh?") {
-            Chips(Auswahl.ORTE, { it in f.ort }) { w -> vm.formularAendern { it.copy(ort = it.ort umschalten w) } }
-        }
-        Karte(titel = "Wann haben sie angefangen?") {
-            val context = LocalContext.current
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = {
-                    val t = runCatching { LocalTime.parse(f.beginn) }.getOrElse { LocalTime.now() }
-                    TimePickerDialog(context, { _, h, m ->
-                        vm.formularAendern { it.copy(beginn = "%02d:%02d".format(h, m)) }
-                    }, t.hour, t.minute, true).show()
-                }) { Text(if (f.beginn.isEmpty()) "Uhrzeit wählen" else "${f.beginn} Uhr") }
-                if (f.beginn.isNotEmpty()) TextButton(onClick = { vm.formularAendern { it.copy(beginn = "") } }) { Text("leeren") }
-            }
-        }
-        Karte(titel = "Wie fühlt sich der Schmerz an?") {
-            Chips(Auswahl.ARTEN, { it in f.art }) { w -> vm.formularAendern { it.copy(art = it.art umschalten w) } }
-        }
-        Karte(titel = "Wie lange schon?") {
-            Chips(Auswahl.DAUER, { it == f.dauer }) { w -> vm.formularAendern { it.copy(dauer = if (it.dauer == w) "" else w) } }
-        }
-        Karte(titel = "Was könnte der Auslöser sein?") {
-            Chips(Auswahl.AUSLOESER, { it in f.ausloeser }) { w -> vm.formularAendern { it.copy(ausloeser = it.ausloeser umschalten w) } }
-        }
-        Karte(titel = "Medikament genommen?") {
-            OutlinedTextField(
-                value = f.medikament, onValueChange = { v -> vm.formularAendern { it.copy(medikament = v) } },
-                placeholder = { Text("z. B. Ibuprofen 200 mg – oder leer lassen") }, singleLine = true,
-                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
-            )
-        }
-        Karte(titel = "Sonst noch etwas?") {
-            OutlinedTextField(
-                value = f.notiz, onValueChange = { v -> vm.formularAendern { it.copy(notiz = v) } },
-                placeholder = { Text("Notiz (freiwillig)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            )
-        }
-        Column(
-            Modifier.onGloballyPositioned { pflichtY = it.positionInParent().y },
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        val context = LocalContext.current
+        Karte(
+            titel = if (f.datum == heuteIso) "Hattest Du heute Kopfschmerzen?" else "Hattest Du an diesem Tag Kopfschmerzen?",
+            fehler = pflichtFehler && f.schmerzen == null,
         ) {
-            Karte(titel = "Für jeden Tag: Bildschirmzeit", hervorgehoben = true, fehler = pflichtFehler && f.bildschirm.isEmpty()) {
-                Chips(Auswahl.BILDSCHIRM, { it == f.bildschirm }) { w -> vm.formularAendern { it.copy(bildschirm = w) } }
-            }
-            Karte(titel = "Für jeden Tag: Wie viel hast Du getrunken?", hervorgehoben = true, fehler = pflichtFehler && f.trinken.isEmpty()) {
-                Chips(Auswahl.TRINKEN, { it == f.trinken }) { w -> vm.formularAendern { it.copy(trinken = w) } }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                JaNeinKnopf("Ja 😣", f.schmerzen == true, Farben.Koralle, Modifier.weight(1f)) {
+                    vm.formularAendern { it.copy(schmerzen = true) }
+                }
+                JaNeinKnopf("Nein 🎉", f.schmerzen == false, MaterialTheme.colorScheme.tertiary, Modifier.weight(1f)) {
+                    vm.formularAendern { it.copy(schmerzen = false) }
+                }
             }
         }
 
-        fun speichern(frei: Boolean) {
-            val fehler = vm.speichern(frei)
-            if (fehler != null) {
-                pflichtFehler = true
-                meldung(fehler)
-                scope.launch { scroll.animateScrollTo((pflichtY - 40).toInt().coerceAtLeast(0)) }
-            } else {
-                pflichtFehler = false
-                scope.launch { scroll.scrollTo(0) }
+        if (f.schmerzen == true) {
+            Karte(titel = "Wie stark sind die Kopfschmerzen?") {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Text(Auswahl.GESICHT[f.staerke], fontSize = 44.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Text(f.staerke.toString(), fontSize = 48.sp, fontWeight = FontWeight.ExtraBold, color = Farben.staerke(f.staerke))
+                }
+                Text(
+                    Auswahl.STAERKE_TEXT[f.staerke], color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center,
+                )
+                Slider(
+                    value = f.staerke.toFloat(), onValueChange = { v -> vm.formularAendern { it.copy(staerke = v.toInt()) } },
+                    valueRange = 1f..10f, steps = 8,
+                    colors = SliderDefaults.colors(thumbColor = Farben.staerke(f.staerke), activeTrackColor = Farben.staerke(f.staerke)),
+                )
+            }
+            Karte(titel = "Wo tut es weh?") {
+                Chips(Auswahl.ORTE, { it in f.ort }) { w -> vm.formularAendern { it.copy(ort = it.ort umschalten w) } }
+            }
+            Karte(titel = "Wie fühlt sich der Schmerz an?") {
+                Chips(Auswahl.ARTEN, { it in f.art }) { w -> vm.formularAendern { it.copy(art = it.art umschalten w) } }
+            }
+            Karte(titel = "Wann haben sie angefangen – und wie lange dauern sie?") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = { uhrzeitWaehlen(context, f.beginn) { z -> vm.formularAendern { it.copy(beginn = z) } } }) {
+                        Text(if (f.beginn.isEmpty()) "Beginn: Uhrzeit wählen" else "Beginn: ${f.beginn} Uhr")
+                    }
+                    if (f.beginn.isNotEmpty()) TextButton(onClick = { vm.formularAendern { it.copy(beginn = "") } }) { Text("leeren") }
+                }
+                Spacer(Modifier.height(8.dp))
+                Chips(Auswahl.DAUER, { it == f.dauer }) { w -> vm.formularAendern { it.copy(dauer = if (it.dauer == w) "" else w) } }
+            }
+            Karte(titel = "Was war sonst noch?") {
+                Text("Alles antippen, was dazu passt", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 6.dp))
+                Chips(Auswahl.BEGLEIT, { it in f.begleit }) { w -> vm.formularAendern { it.copy(begleit = it.begleit umschalten w) } }
+            }
+            Karte(titel = "Was könnte der Auslöser sein?") {
+                Chips(Auswahl.AUSLOESER, { it in f.ausloeser }) { w -> vm.formularAendern { it.copy(ausloeser = it.ausloeser umschalten w) } }
+            }
+            MedikamentKarte(f, daten.meineMedikamente, vm)
+            Karte(titel = "Wie sehr hat es Dich gebremst?") {
+                Chips(Auswahl.ALLTAG, { it == f.alltag }) { w -> vm.formularAendern { it.copy(alltag = if (it.alltag == w) "" else w) } }
             }
         }
-        HauptKnopf("Eintrag speichern") { speichern(false) }
-        OutlinedButton(
-            onClick = { speichern(true) },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-            border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.tertiary),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.tertiary),
-        ) {
-            Text(if (f.datum == heuteIso) "Heute keine Kopfschmerzen 🎉" else "An diesem Tag keine Kopfschmerzen 🎉", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+
+        if (f.schmerzen != null) {
+            Column(
+                Modifier.onGloballyPositioned { pflichtY = it.positionInParent().y },
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Karte(titel = "Für jeden Tag: Bildschirmzeit", hervorgehoben = true, fehler = pflichtFehler && f.bildschirm.isEmpty()) {
+                    Chips(Auswahl.BILDSCHIRM, { it == f.bildschirm }) { w -> vm.formularAendern { it.copy(bildschirm = w) } }
+                }
+                Karte(titel = "Für jeden Tag: Wie viel hast Du getrunken?", hervorgehoben = true, fehler = pflichtFehler && f.trinken.isEmpty()) {
+                    Chips(Auswahl.TRINKEN, { it == f.trinken }) { w -> vm.formularAendern { it.copy(trinken = w) } }
+                }
+                Karte(titel = "Wie lange hast Du letzte Nacht geschlafen?") {
+                    Chips(Auswahl.SCHLAF, { it == f.schlaf }) { w -> vm.formularAendern { it.copy(schlaf = if (it.schlaf == w) "" else w) } }
+                }
+            }
+            Karte(titel = "Sonst noch etwas?") {
+                OutlinedTextField(
+                    value = f.notiz, onValueChange = { v -> vm.formularAendern { it.copy(notiz = v) } },
+                    placeholder = { Text("Notiz (freiwillig)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                )
+            }
+            HauptKnopf("Eintrag speichern") {
+                val fehler = vm.speichern()
+                if (fehler != null) {
+                    pflichtFehler = true
+                    meldung(fehler)
+                    scope.launch { scroll.animateScrollTo((pflichtY - 40).toInt().coerceAtLeast(0)) }
+                } else {
+                    pflichtFehler = false
+                    scope.launch { scroll.scrollTo(0) }
+                }
+            }
         }
         Spacer(Modifier.height(8.dp))
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MedikamentKarte(f: Formular, meine: List<String>, vm: AppViewModel) {
+    val context = LocalContext.current
+    Karte(titel = "Medikament genommen?") {
+        // Gewählte Medikamente, die (nicht mehr) in der Liste stehen, trotzdem anzeigen
+        val alle = meine + f.medikamente.filter { it !in meine }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AuswahlChip("keins", !f.mitMedikament && !f.medikamentAnders) {
+                vm.formularAendern { it.copy(medikamente = emptySet(), medikamentAnders = false, medikament = "", medikamentZeit = "", wirkung = "") }
+            }
+            alle.forEach { m ->
+                AuswahlChip("💊 $m", m in f.medikamente) {
+                    vm.formularAendern {
+                        val neu = it.medikamente umschalten m
+                        it.copy(medikamente = neu, medikamentZeit = it.medikamentZeit.ifEmpty { jetzt() })
+                    }
+                }
+            }
+            AuswahlChip("anderes …", f.medikamentAnders) {
+                vm.formularAendern { it.copy(medikamentAnders = !it.medikamentAnders, medikamentZeit = it.medikamentZeit.ifEmpty { jetzt() }) }
+            }
+        }
+        if (f.medikamentAnders) {
+            OutlinedTextField(
+                value = f.medikament, onValueChange = { v -> vm.formularAendern { it.copy(medikament = v) } },
+                placeholder = { Text("Name und Menge, z. B. Nasenspray") }, singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp), shape = RoundedCornerShape(10.dp),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+            )
+        }
+        if (f.mitMedikament) {
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(onClick = { uhrzeitWaehlen(context, f.medikamentZeit) { z -> vm.formularAendern { it.copy(medikamentZeit = z) } } }) {
+                Text(if (f.medikamentZeit.isEmpty()) "Wann genommen? Uhrzeit wählen" else "Genommen um ${f.medikamentZeit} Uhr")
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("Hat es geholfen?", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Spacer(Modifier.height(4.dp))
+            Chips(Auswahl.WIRKUNG, { it == f.wirkung }) { w -> vm.formularAendern { it.copy(wirkung = if (it.wirkung == w) "" else w) } }
+        }
+    }
+}
+
+@Composable
+private fun AuswahlChip(text: String, an: Boolean, onClick: () -> Unit) {
+    androidx.compose.material3.FilterChip(
+        selected = an, onClick = onClick,
+        label = { Text(text, fontWeight = if (an) FontWeight.SemiBold else FontWeight.Normal) },
+        shape = RoundedCornerShape(50),
+        colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    )
+}
+
+@Composable
+private fun JaNeinKnopf(text: String, gewaehlt: Boolean, farbe: androidx.compose.ui.graphics.Color, modifier: Modifier, onClick: () -> Unit) {
+    if (gewaehlt) {
+        Button(
+            onClick = onClick, modifier = modifier.height(56.dp), shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = farbe, contentColor = androidx.compose.ui.graphics.Color.White),
+        ) { Text(text, fontWeight = FontWeight.Bold, fontSize = 17.sp) }
+    } else {
+        OutlinedButton(
+            onClick = onClick, modifier = modifier.height(56.dp), shape = RoundedCornerShape(12.dp),
+            border = androidx.compose.foundation.BorderStroke(2.dp, farbe),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = farbe),
+        ) { Text(text, fontWeight = FontWeight.Bold, fontSize = 17.sp) }
+    }
+}
+
+private fun jetzt() = LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+
+private fun uhrzeitWaehlen(context: android.content.Context, aktuell: String, gewaehlt: (String) -> Unit) {
+    val t = runCatching { LocalTime.parse(aktuell) }.getOrElse { LocalTime.now() }
+    TimePickerDialog(context, { _, h, m -> gewaehlt("%02d:%02d".format(h, m)) }, t.hour, t.minute, true).show()
 }
 
 private infix fun Set<String>.umschalten(w: String) = if (w in this) this - w else this + w

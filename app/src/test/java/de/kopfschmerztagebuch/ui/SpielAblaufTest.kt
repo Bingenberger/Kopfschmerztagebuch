@@ -44,18 +44,34 @@ class SpielAblaufTest {
     @Test
     fun eintragenUndVomTurmSpringen() {
         foto("0-formular")
+        rule.onNodeWithText("Ja 😣").performClick()
+        rule.onNodeWithText("💊 Ibuprofen").performScrollTo().performClick()
+        rule.onNodeWithText("Übelkeit").performScrollTo().performClick()
         rule.onNodeWithText("unter 1 Stunde").performScrollTo().performClick()
         rule.onNodeWithText("unter 0,5 Liter").performScrollTo().performClick()
-        rule.onNodeWithText("Heute keine Kopfschmerzen 🎉").performScrollTo().performClick()
+        foto("0b-formular-ausgefuellt")
+        rule.onNodeWithText("Eintrag speichern").performScrollTo().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Super – heute keine Kopfschmerzen!").assertExists()
+        rule.onNodeWithText("Eintrag gespeichert.").assertExists()
+
+        val vm = ViewModelProvider(rule.activity)[AppViewModel::class.java]
+        val heute = vm.heute.value.toString()
+        val e = vm.daten.value.eintraege.getValue(heute)
+        assertEquals(listOf("Ibuprofen"), e.medikamente)
+        assertEquals(listOf("Übelkeit"), e.begleit)
+        assertTrue("Einnahmezeit vorbelegt", e.medikamentZeit.isNotEmpty())
+
+        // Wirkung direkt auf der Bestätigungskarte nachtragen
+        rule.onNodeWithText("Hat Ibuprofen geholfen?", substring = true).assertExists()
+        rule.onNodeWithText("gut geholfen").performScrollTo().performClick()
+        rule.waitForIdle()
+        assertEquals("gut geholfen", vm.daten.value.eintraege.getValue(heute).wirkung)
         foto("1-gespeichert")
 
         // Die Spielschleife läuft endlos – ab hier die Zeit von Hand weiterdrehen.
         rule.mainClock.autoAdvance = false
         rule.onNodeWithText("Sprungturm").performClick()
         rule.mainClock.advanceTimeBy(600)
-        val vm = ViewModelProvider(rule.activity)[AppViewModel::class.java]
         assertEquals(Phase.BEREIT, vm.spiel.phase)
         foto("2-bereit")
 

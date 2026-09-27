@@ -8,6 +8,8 @@ object Csv {
     val KOPF = listOf(
         "Datum", "Schmerzfrei", "Stärke (1–10)", "Beginn", "Art des Schmerzes", "Ort", "Dauer",
         "Auslöser", "Medikament", "Bildschirmzeit", "Trinkmenge", "Notiz", "Uhrzeit des Eintrags", "Nachgetragen",
+        // ab App-Version 1.1 – hinten angehängt, damit ältere Dateien lesbar bleiben
+        "Medikament um", "Wirkung", "Begleitsymptome", "Einschränkung im Alltag", "Schlaf",
     )
 
     fun exportieren(eintraege: Map<String, Eintrag>): String {
@@ -15,12 +17,16 @@ object Csv {
         eintraege.keys.sorted().forEach { t ->
             val e = eintraege.getValue(t)
             zeilen += if (e.frei) {
-                listOf(t, "ja", "", "", "", "", "", "", "", e.bildschirm, e.trinken, e.notiz, e.zeit, if (e.nachgetragen) "ja" else "")
+                listOf(
+                    t, "ja", "", "", "", "", "", "", "", e.bildschirm, e.trinken, e.notiz, e.zeit, if (e.nachgetragen) "ja" else "",
+                    "", "", "", "", e.schlaf,
+                )
             } else {
                 listOf(
                     t, "nein", e.staerke.toString(), e.beginn, e.art.joinToString("; "), e.ort.joinToString("; "),
-                    e.dauer, e.ausloeser.joinToString("; "), e.medikament, e.bildschirm, e.trinken, e.notiz, e.zeit,
+                    e.dauer, e.ausloeser.joinToString("; "), e.medikamentText, e.bildschirm, e.trinken, e.notiz, e.zeit,
                     if (e.nachgetragen) "ja" else "",
+                    e.medikamentZeit, e.wirkung, e.begleit.joinToString("; "), e.alltag, e.schlaf,
                 )
             }
         }
@@ -37,12 +43,13 @@ object Csv {
             fun liste(i: Int) = f(i).split(";").map { it.trim() }.filter { it.isNotEmpty() }
             val frei = f(1).equals("ja", ignoreCase = true)
             ergebnis[t] = if (frei) {
-                Eintrag(frei = true, bildschirm = f(9), trinken = f(10), notiz = f(11), zeit = f(12), nachgetragen = f(13) == "ja")
+                Eintrag(frei = true, bildschirm = f(9), trinken = f(10), notiz = f(11), zeit = f(12), nachgetragen = f(13) == "ja", schlaf = f(18))
             } else {
                 Eintrag(
                     frei = false, staerke = f(2).toIntOrNull()?.coerceIn(1, 10) ?: 5, beginn = f(3), art = liste(4),
                     ort = liste(5), dauer = f(6), ausloeser = liste(7), medikament = f(8), bildschirm = f(9),
                     trinken = f(10), notiz = f(11), zeit = f(12), nachgetragen = f(13) == "ja",
+                    medikamentZeit = f(14), wirkung = f(15), begleit = liste(16), alltag = f(17), schlaf = f(18),
                 )
             }
         }

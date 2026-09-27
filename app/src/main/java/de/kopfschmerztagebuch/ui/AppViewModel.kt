@@ -40,24 +40,39 @@ enum class Tab { HEUTE, VERLAUF, SPIEL, MEHR }
 /** Eingaben im Formular – im ViewModel, damit sie beim Tab-Wechsel erhalten bleiben. */
 data class Formular(
     val datum: String,
+    /** Kopfschmerzen ja/nein – null, solange noch nicht beantwortet. */
+    val schmerzen: Boolean? = null,
     val staerke: Int = 5,
     val ort: Set<String> = emptySet(),
     val beginn: String = "",
     val art: Set<String> = emptySet(),
     val dauer: String = "",
+    val begleit: Set<String> = emptySet(),
     val ausloeser: Set<String> = emptySet(),
+    /** Aus „Meine Medikamente“ gewählt. */
+    val medikamente: Set<String> = emptySet(),
+    /** Freitextfeld „anderes Medikament“ sichtbar. */
+    val medikamentAnders: Boolean = false,
     val medikament: String = "",
+    val medikamentZeit: String = "",
+    val wirkung: String = "",
+    val alltag: String = "",
     val notiz: String = "",
     val bildschirm: String = "",
     val trinken: String = "",
+    val schlaf: String = "",
     /** true, wenn ein bestehender Eintrag bearbeitet wird. */
     val bearbeiten: Boolean = false,
 ) {
+    val mitMedikament: Boolean get() = medikamente.isNotEmpty() || (medikamentAnders && medikament.isNotBlank())
+
     companion object {
         fun aus(datum: String, e: Eintrag) = Formular(
-            datum = datum, staerke = if (e.frei) 5 else e.staerke, ort = e.ort.toSet(), beginn = e.beginn,
-            art = e.art.toSet(), dauer = e.dauer, ausloeser = e.ausloeser.toSet(), medikament = e.medikament,
-            notiz = e.notiz, bildschirm = e.bildschirm, trinken = e.trinken, bearbeiten = true,
+            datum = datum, schmerzen = !e.frei, staerke = if (e.frei) 5 else e.staerke, ort = e.ort.toSet(), beginn = e.beginn,
+            art = e.art.toSet(), dauer = e.dauer, begleit = e.begleit.toSet(), ausloeser = e.ausloeser.toSet(),
+            medikamente = e.medikamente.toSet(), medikamentAnders = e.medikament.isNotBlank(), medikament = e.medikament,
+            medikamentZeit = e.medikamentZeit, wirkung = e.wirkung, alltag = e.alltag,
+            notiz = e.notiz, bildschirm = e.bildschirm, trinken = e.trinken, schlaf = e.schlaf, bearbeiten = true,
         )
     }
 }
@@ -113,18 +128,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Speichert den Eintrag. Gibt eine Fehlermeldung zurück, wenn Pflichtfelder fehlen. */
-    fun speichern(ohneSchmerzen: Boolean): String? {
+    fun speichern(): String? {
         val f = _formular.value
+        if (f.schmerzen == null) return "Hattest Du Kopfschmerzen? Bitte oben „Ja“ oder „Nein“ antippen."
         if (f.bildschirm.isEmpty() || f.trinken.isEmpty()) return "Bitte noch Bildschirmzeit und Trinkmenge auswählen – die gehören zu jedem Tag dazu."
         val heute = _heute.value.toString()
         val alt = daten.value.eintraege[f.datum]
-        val e = if (ohneSchmerzen) {
-            Eintrag(frei = true, bildschirm = f.bildschirm, trinken = f.trinken, notiz = f.notiz.trim())
+        val e = if (!f.schmerzen) {
+            Eintrag(frei = true, bildschirm = f.bildschirm, trinken = f.trinken, schlaf = f.schlaf, notiz = f.notiz.trim())
         } else {
+            val mitMedikament = f.mitMedikament
             Eintrag(
                 frei = false, staerke = f.staerke, beginn = f.beginn, art = Auswahlreihenfolge.art(f.art), ort = Auswahlreihenfolge.ort(f.ort),
-                dauer = f.dauer, ausloeser = Auswahlreihenfolge.ausloeser(f.ausloeser), medikament = f.medikament.trim(),
-                notiz = f.notiz.trim(), bildschirm = f.bildschirm, trinken = f.trinken,
+                dauer = f.dauer, begleit = Auswahlreihenfolge.begleit(f.begleit), ausloeser = Auswahlreihenfolge.ausloeser(f.ausloeser),
+                medikamente = daten.value.meineMedikamente.filter { it in f.medikamente } + f.medikamente.filter { it !in daten.value.meineMedikamente },
+                medikament = if (f.medikamentAnders) f.medikament.trim() else "",
+                medikamentZeit = if (mitMedikament) f.medikamentZeit else "",
+                wirkung = if (mitMedikament) f.wirkung else "",
+                alltag = f.alltag, notiz = f.notiz.trim(), bildschirm = f.bildschirm, trinken = f.trinken, schlaf = f.schlaf,
             )
         }.copy(
             zeit = alt?.zeit?.takeIf { f.bearbeiten } ?: LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")),
@@ -138,6 +159,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _formular.value = Formular(heute)
         _formularOffen.value = false
         return null
+    }
+
+    /** Wirkung des Medikaments nachträglich eintragen (z. B. zwei Stunden nach der Einnahme). */
+    fun wirkungSetzen(datum: String, wirkung: String) = viewModelScope.launch {
+        speicher.aendern { d ->
+            val e = d.eintraege[datum] ?: return@aendern d
+            d.copy(eintraege = d.eintraege + (datum to e.copy(wirkung = wirkung)))
+        }
+    }
+
+    fun medikamentHinzufuegen(name: String) = viewModelScope.launch {
+        val n = name.trim()
+        if (n.isEmpty()) return@launch
+        speicher.aendern { d -> if (n in d.meineMedikamente) d else d.copy(meineMedikamente = d.meineMedikamente + n) }
+    }
+
+    fun medikamentEntfernen(name: String) = viewModelScope.launch {
+        speicher.aendern { d -> d.copy(meineMedikamente = d.meineMedikamente - name) }
     }
 
     fun eintragLoeschen(datum: String) = viewModelScope.launch {
@@ -309,4 +348,5 @@ private object Auswahlreihenfolge {
     fun ort(s: Set<String>) = sortiert(s, Auswahl.ORTE)
     fun art(s: Set<String>) = sortiert(s, Auswahl.ARTEN)
     fun ausloeser(s: Set<String>) = sortiert(s, Auswahl.AUSLOESER)
+    fun begleit(s: Set<String>) = sortiert(s, Auswahl.BEGLEIT)
 }

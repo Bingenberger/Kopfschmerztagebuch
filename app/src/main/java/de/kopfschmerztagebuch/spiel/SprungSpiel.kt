@@ -76,28 +76,41 @@ class SprungSpiel {
     fun mX(m: Double) = (breite * 0.14 + m * ppm).toFloat()
     fun mY(m: Double) = (wasserY - m * ppm).toFloat()
 
+    /**
+     * Passt die Pixel-Umrechnung an die Größe der Zeichenfläche an. Der Spielzustand bleibt dabei
+     * unangetastet – die Fläche kann sich jederzeit ändern (Hinweistext, Tastatur, Drehung).
+     */
     fun layout(b: Float, h: Float) {
         if (b == breite && h == hoehe) return
+        val erstesMal = breite == 0f
         breite = b; hoehe = h
         figur = b / 360f
         wasserY = h * 0.86f
-        wolken.clear()
-        repeat(4) { wolken += Wolke(Random.nextFloat() * b, h * (0.05f + Random.nextFloat() * 0.28f), 0.7f + Random.nextFloat() * 0.8f, 6f + Random.nextFloat() * 9f) }
-        moewen.clear()
-        repeat(3) { moewen += Moewe(Random.nextFloat() * b, h * (0.12f + Random.nextFloat() * 0.25f), 18f + Random.nextFloat() * 20f, Random.nextFloat() * 6f) }
-        zuruecksetzen()
+        massstabSetzen()
+        if (erstesMal) {
+            repeat(4) { wolken += Wolke(Random.nextFloat() * b, h * (0.05f + Random.nextFloat() * 0.28f), 0.7f + Random.nextFloat() * 0.8f, 6f + Random.nextFloat() * 9f) }
+            repeat(3) { moewen += Moewe(Random.nextFloat() * b, h * (0.12f + Random.nextFloat() * 0.25f), 18f + Random.nextFloat() * 20f, Random.nextFloat() * 6f) }
+        }
+        if (phase == Phase.BEREIT || phase == Phase.ANLAUF) y = standHoehe()
     }
 
+    private fun massstabSetzen() {
+        if (hoehe > 0) ppm = (wasserY - hoehe * 0.08f) / (turm.h + 2.2f)
+    }
+
+    /** Höhe des Körpermittelpunkts, wenn der Springer auf der Plattform steht. */
+    private fun standHoehe() = turm.h + 21.0 * figur / ppm
+
     fun turmWaehlen(i: Int) {
-        if (phase == Phase.FLUG || phase == Phase.WASSER) return
+        if (phase == Phase.FLUG || phase == Phase.WASSER || i == turmIdx) return
         turmIdx = i
         zuruecksetzen()
     }
 
     fun zuruecksetzen() {
-        if (hoehe > 0) ppm = (wasserY - hoehe * 0.08f) / (turm.h + 2.2f)
+        massstabSetzen()
         x = 0.45; vx = 0.0; vy = 0.0
-        y = turm.h + 21.0 * figur / ppm
+        y = standHoehe()
         winkel = 0.0; drehung = 0.0; schraube = 0.0; schraubeZiel = 0.0
         saltiGezaehlt = 0; schraubenGezaehlt = 0; tiefe = 0.0; anlaufZeit = 0.0
         spritzer.clear()

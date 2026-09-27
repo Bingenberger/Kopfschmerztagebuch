@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,7 +53,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -181,6 +182,7 @@ fun SpielScreen(vm: AppViewModel) {
                 .fillMaxWidth()
                 .weight(1f)
                 .clip(RoundedCornerShape(16.dp))
+                .testTag("spielfeld")
                 .pointerInput(Unit) {
                     val schwelle = 36.dp.toPx()
                     awaitEachGesture {
@@ -223,7 +225,9 @@ fun SpielScreen(vm: AppViewModel) {
                 Phase.FERTIG -> "Höchste und niedrigste Note fallen weg – wie bei Olympia."
             },
             fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 15.sp,
-            modifier = Modifier.padding(vertical = 6.dp).heightIn(min = 30.dp),
+            maxLines = 2, overflow = TextOverflow.Ellipsis,
+            // feste Höhe: Die Zeichenfläche darf sich beim Phasenwechsel nicht verschieben
+            modifier = Modifier.padding(vertical = 6.dp).height(32.dp),
         )
         val bonus = vm.spruengeMax() - 10
         HauptKnopf(

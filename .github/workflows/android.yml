@@ -20,6 +20,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Tests
         run: ./gradlew --no-daemon testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bildschirmfotos
+          path: app/build/bildschirmfotos/
+          if-no-files-found: ignore
       - name: APK bauen
         run: ./gradlew --no-daemon assembleDebug
       - uses: actions/upload-artifact@v4

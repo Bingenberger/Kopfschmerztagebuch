@@ -61,4 +61,20 @@ class BewertungTest {
         repeat(100) { s.schritt(0.016) }
         assertEquals(Phase.FERTIG, s.phase)
     }
+
+    @Test
+    fun groessenaenderungSetztSprungNichtZurueck() {
+        val s = SprungSpiel()
+        s.layout(360f, 500f)
+        s.anlaufStarten()
+        s.layout(360f, 520f) // z. B. kürzerer Hinweistext unter dem Spielfeld
+        assertEquals(Phase.ANLAUF, s.phase)
+        s.abspringen()
+        repeat(10) { s.schritt(0.016) }
+        s.layout(360f, 480f)
+        assertEquals(Phase.FLUG, s.phase)
+        var n = 0
+        while (s.ergebnis == null && n++ < 1000) s.schritt(0.016)
+        assertTrue(s.ergebnis != null)
+    }
 }

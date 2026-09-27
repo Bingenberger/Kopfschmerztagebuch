@@ -1,0 +1,21 @@
+# Vorübergehend: Bildschirmfotos klein ins Log schreiben, um sie ohne Artefakt-Download ansehen zu können.
+name: Vorschau
+on: push
+jobs:
+  fotos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew --no-daemon testDebugUnitTest --tests '*SpielAblaufTest*'
+      - if: always()
+        run: |
+          cd app/build/bildschirmfotos
+          for f in *.png; do
+            convert "$f" -resize 300x -quality 60 "${f%.png}.jpg"
+            echo "=====BILD ${f%.png}"; base64 -w0 "${f%.png}.jpg"; echo; echo "=====ENDE"
+          done

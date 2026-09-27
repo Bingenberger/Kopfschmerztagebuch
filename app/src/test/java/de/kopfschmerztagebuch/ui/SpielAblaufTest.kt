@@ -56,10 +56,10 @@ class SpielAblaufTest {
 
         val vm = ViewModelProvider(rule.activity)[AppViewModel::class.java]
         val heute = vm.heute.value.toString()
-        val e = vm.daten.value.eintraege.getValue(heute)
-        assertEquals(listOf("Ibuprofen"), e.medikamente)
-        assertEquals(listOf("Übelkeit"), e.begleit)
-        assertTrue("Einnahmezeit vorbelegt", e.medikamentZeit.isNotEmpty())
+        val eintrag = vm.daten.value.eintraege.getValue(heute)
+        assertEquals(listOf("Ibuprofen"), eintrag.medikamente)
+        assertEquals(listOf("Übelkeit"), eintrag.begleit)
+        assertTrue("Einnahmezeit vorbelegt", eintrag.medikamentZeit.isNotEmpty())
 
         // Wirkung direkt auf der Bestätigungskarte nachtragen
         rule.onNodeWithText("Hat Ibuprofen geholfen?", substring = true).assertExists()

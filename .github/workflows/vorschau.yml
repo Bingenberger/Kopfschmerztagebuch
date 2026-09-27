@@ -27,6 +27,7 @@ jobs:
           name: vorschau
           path: fotos
       - run: |
+          pip install -q pillow
           cd fotos; ls -la
           for f in *.png; do
             python3 -c "

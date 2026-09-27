@@ -29,10 +29,10 @@ jobs:
       - run: |
           pip install -q pillow
           cd fotos; ls -la
-          for f in *.png; do
+          for f in 2-bereit.png 3-anlauf.png 5-ergebnis.png; do
             python3 -c "
           import sys,base64,io
           from PIL import Image
-          im=Image.open('$f').convert('RGB'); im.thumbnail((320,720)); b=io.BytesIO(); im.save(b,'JPEG',quality=55)
+          im=Image.open('$f').convert('RGB'); im.thumbnail((240,540)); b=io.BytesIO(); im.save(b,'JPEG',quality=40)
           print('=====BILD $f'); print(base64.b64encode(b.getvalue()).decode()); print('=====ENDE')" || echo "Fehler bei $f"
           done
